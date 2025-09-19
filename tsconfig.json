@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+    // Environment Settings
+    "module": "nodenext",
+    "target": "esnext",
+    // เพิ่ม moduleResolution สำหรับ Node.js ESM
+    "moduleResolution": "nodenext",
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // Recommended Options
+    "strict": true,
+    "skipLibCheck": true
+  }
+}

@@ -1,0 +1,34 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id    Int     @id @default(autoincrement())
+  user_name  String?
+  user_email String  @unique
+  user_password String
+  user_role Int?
+
+  tb_role   tb_role? @relation(fields:[user_role], references:[id])
+
+  
+}
+model tb_role{
+  id Int    @id @default(autoincrement())
+  role_name String
+  User  User[]
+}
+ model Product {
+      id          Int      @id @default(autoincrement())
+      name        String
+      price       Float
+      description String?
+    }
