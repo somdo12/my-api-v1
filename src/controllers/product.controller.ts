@@ -1,122 +1,326 @@
-// import { Request, Response } from 'express';
-// import { PrismaClient } from '../generated/prisma';
-
-// const prisma = new PrismaClient();
-
-// // ฟังก์ชันสำหรับสร้างสินค้าใหม่
-// const createProduct = async (req: Request, res: Response) => {
-//     // TODO: เพิ่ม logic สำหรับการสร้างสินค้าที่นี่
-//     // ตัวอย่าง:
-//     // const { name, price } = req.body;
-//     // const newProduct = await prisma.product.create({
-//     //     data: {
-//     //         name,
-//     //         price,
-//     //     },
-//     // });
-//     res.status(201).json({ message: 'Product created successfully.' });
-// };
-
-// // ฟังก์ชันสำหรับดูสินค้าทั้งหมด
-// const getAllProducts = async (req: Request, res: Response) => {
-//     try {
-//         // TODO: เพิ่ม logic สำหรับการดึงข้อมูลสินค้าทั้งหมดที่นี่
-//         const allProducts = await prisma.product.findMany();
-//         res.status(200).json(allProducts);
-//     } catch (e: any) {
-//         return res.status(500).json({ error: 'Something went wrong.' });
-//     }
-// };
-
-// // ฟังก์ชันสำหรับอัปเดตข้อมูลสินค้า
-// const updateProduct = async (req: Request, res: Response) => {
-//     // TODO: เพิ่ม logic สำหรับการอัปเดตสินค้าที่นี่
-//     // ตัวอย่าง:
-//     // const productId = req.params.id;
-//     // const { name, price } = req.body;
-//     // await prisma.product.update({
-//     //     where: { id: Number(productId) },
-//     //     data: { name, price },
-//     // });
-//     res.status(200).json({ message: 'Product updated successfully.' });
-// };
-
-// // ฟังก์ชันสำหรับลบสินค้า
-// const deleteProduct = async (req: Request, res: Response) => {
-//     // TODO: เพิ่ม logic สำหรับการลบสินค้าที่นี่
-//     // ตัวอย่าง:
-//     // const productId = req.params.id;
-//     // await prisma.product.delete({
-//     //     where: { id: Number(productId) },
-//     // });
-//     res.status(200).json({ message: 'Product deleted successfully.' });
-// };
-
-// export { createProduct, getAllProducts, updateProduct, deleteProduct };
 import { Request, Response } from 'express';
 import { PrismaClient } from '../generated/prisma';
+import { 
+    createProductSchema, 
+    updateProductSchema, 
+    productQuerySchema,
+    productIdSchema,
+    CreateProductInput,
+    UpdateProductInput,
+    ProductQueryInput 
+} from '../models/product.model';
 
 const prisma = new PrismaClient();
+
+// ⭐ แก้ไข Interfaces สำหรับ Type Safety
+interface CreateProductRequest {
+    name: string;
+    price: number;
+    description?: string;
+}
+
+interface UpdateProductRequest {
+    name?: string;
+    price?: number;
+    description?: string;
+}
+
+interface ProductParams {
+    id?: string; // ⭐ เปลี่ยนเป็น optional
+}
+
+// ⭐ Helper function สำหรับ validation
+const validateProductData = (name: string, price: number) => {
+    const errors: string[] = [];
+    
+    if (!name || name.trim().length === 0) {
+        errors.push('Product name is required.');
+    }
+    
+    if (name && name.trim().length > 100) {
+        errors.push('Product name must be less than 100 characters.');
+    }
+    
+    if (price === undefined || price === null) {
+        errors.push('Price is required.');
+    }
+    
+    if (price <= 0) {
+        errors.push('Price must be greater than 0.');
+    }
+    
+    if (price > 999999.99) {
+        errors.push('Price is too high (max: 999,999.99).');
+    }
+    
+    return errors;
+};
+
+// ⭐ Helper function สำหรับ ID validation
+const validateProductId = (id: string): number | null => {
+    const productId = parseInt(id);
+    if (isNaN(productId) || productId <= 0) {
+        return null;
+    }
+    return productId;
+};
 
 // ฟังก์ชันสำหรับสร้างสินค้าใหม่
 const createProduct = async (req: Request, res: Response) => {
     try {
-        const { name, price, description } = req.body;
+        // ⭐ ใช้ Zod validation
+        const validationResult = createProductSchema.safeParse(req.body);
+        
+        if (!validationResult.success) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: validationResult.error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+        
+        const { name, price, description } = validationResult.data;
+        
         const newProduct = await prisma.product.create({
             data: {
                 name,
                 price,
-                description,
+                ...(description && { description }), // ⭐ แก้ไขใหม่
             },
         });
+        
+        console.log(`✅ Product created: ${newProduct.name} (ID: ${newProduct.id})`);
         res.status(201).json(newProduct);
-    } catch (error) {
+        
+    } catch (error: any) {
+        console.error('❌ Error creating product:', error);
+        
+        // ⭐ จัดการ Prisma specific errors
+        if (error.code === 'P2002') {
+            return res.status(409).json({ error: 'Product name already exists.' });
+        }
+        
+        if (error.code === 'P2003') {
+            return res.status(400).json({ error: 'Invalid reference data.' });
+        }
+        
         return res.status(500).json({ error: 'Failed to create product.' });
     }
 };
 
 // ฟังก์ชันสำหรับดูสินค้าทั้งหมด
-const getAllProducts = async (req: Request, res: Response) => {
+const getProducts = async (req: Request, res: Response) => {
     try {
-        const allProducts = await prisma.product.findMany();
-        res.status(200).json(allProducts);
-    } catch (e: any) {
-        return res.status(500).json({ error: 'Something went wrong.' });
+        // ⭐ Validate Query Parameters
+        const queryValidation = productQuerySchema.safeParse(req.query);
+        if (!queryValidation.success) {
+            return res.status(400).json({
+                error: 'Invalid query parameters',
+                details: queryValidation.error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+        
+        const { page = 1, limit = 10, search } = queryValidation.data;
+        const skip = (page - 1) * limit;
+        
+        // สร้าง where condition สำหรับ search
+        const where = search ? {
+            OR: [
+                { name: { contains: search, mode: 'insensitive' as const } },
+                { description: { contains: search, mode: 'insensitive' as const } }
+            ]
+        } : {};
+        
+        // แก้ไข query options
+        const queryOptions: any = {
+            where,
+            skip: Math.max(0, skip),
+            orderBy: { id: 'desc' }
+        };
+        
+        // เพิ่ม take เฉพาะเมื่อ limit > 0
+        if (limit > 0) {
+            queryOptions.take = limit;
+        }
+        
+        const [products, totalCount] = await Promise.all([
+            prisma.product.findMany(queryOptions),
+            prisma.product.count({ where })
+        ]);
+        
+        res.status(200).json({
+            products,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalItems: totalCount,
+                itemsPerPage: limit
+            }
+        });
+        
+    } catch (error: any) {
+        console.error('❌ Error fetching products:', error);
+        return res.status(500).json({ error: 'Failed to fetch products.' });
+    }
+};
+
+// ฟังก์ชันสำหรับดูสินค้าจาก ID
+const getProductById = async (req: Request<ProductParams>, res: Response) => {
+    try {
+        // ⭐ Validate Product ID
+        const idValidation = productIdSchema.safeParse(req.params);
+        if (!idValidation.success) {
+            return res.status(400).json({
+                error: 'Invalid product ID',
+                details: idValidation.error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+        
+        const productId = idValidation.data.id;
+        
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+        });
+        
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+        
+        res.status(200).json(product);
+        
+    } catch (error: any) {
+        console.error('❌ Error fetching product:', error);
+        return res.status(500).json({ error: 'Failed to retrieve product.' });
     }
 };
 
 // ฟังก์ชันสำหรับอัปเดตข้อมูลสินค้า
-const updateProduct = async (req: Request, res: Response) => {
+const updateProduct = async (req: Request<ProductParams, {}, UpdateProductRequest>, res: Response) => {
     try {
-        const productId = req.params.id;
-        if (!productId) {
-            return res.status(400).json({ error: 'Product ID is required.' });
+        // ⭐ Validate Product ID
+        const idValidation = productIdSchema.safeParse(req.params);
+        if (!idValidation.success) {
+            return res.status(400).json({
+                error: 'Invalid product ID',
+                details: idValidation.error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
         }
-        const { name, price, description } = req.body;
+        
+        const productId = idValidation.data.id;
+        
+        // ⭐ Validate Request Body
+        const validationResult = updateProductSchema.safeParse(req.body);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: validationResult.error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
+        
+        const { name, price, description } = validationResult.data;
+        
+        // ตรวจสอบว่ามีข้อมูลที่จะอัปเดตหรือไม่
+        if (!name && price === undefined && description === undefined) {
+            return res.status(400).json({ error: 'At least one field (name, price, description) is required for update.' });
+        }
+        
+        // สร้าง update data object
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name;
+        if (price !== undefined) updateData.price = price;
+        if (description !== undefined) updateData.description = description;
+        
         const updatedProduct = await prisma.product.update({
-            where: { id: parseInt(productId) },
-            data: { name, price, description },
+            where: { id: productId },
+            data: updateData,
         });
+        
+        console.log(`✅ Product updated: ${updatedProduct.name} (ID: ${updatedProduct.id})`);
         res.status(200).json(updatedProduct);
-    } catch (error) {
+        
+    } catch (error: any) {
+        console.error('❌ Error updating product:', error);
+        
+        // จัดการ Prisma specific errors
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+        
+        if (error.code === 'P2002') {
+            return res.status(409).json({ error: 'Product name already exists.' });
+        }
+        
         return res.status(500).json({ error: 'Failed to update product.' });
     }
 };
 
 // ฟังก์ชันสำหรับลบสินค้า
-const deleteProduct = async (req: Request, res: Response) => {
+const deleteProduct = async (req: Request<ProductParams>, res: Response) => {
     try {
-        const productId = req.params.id;
-        if (!productId) {
-            return res.status(400).json({ error: 'Product ID is required.' });
+        // ⭐ Validate Product ID
+        const idValidation = productIdSchema.safeParse(req.params);
+        if (!idValidation.success) {
+            return res.status(400).json({
+                error: 'Invalid product ID',
+                details: idValidation.error.issues.map(err => ({
+                    field: err.path.join('.'),
+                    message: err.message
+                }))
+            });
         }
-        await prisma.product.delete({
-            where: { id: parseInt(productId) },
+        
+        const productId = idValidation.data.id;
+        
+        // ตรวจสอบว่าสินค้ามีอยู่จริงก่อนลบ
+        const existingProduct = await prisma.product.findUnique({
+            where: { id: productId }
         });
-        res.status(200).json({ message: 'Product deleted successfully.' });
-    } catch (error) {
+        
+        if (!existingProduct) {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+        
+        await prisma.product.delete({
+            where: { id: productId },
+        });
+        
+        console.log(`🗑️ Product deleted: ${existingProduct.name} (ID: ${productId})`);
+        res.status(200).json({ 
+            message: 'Product deleted successfully.',
+            deletedProduct: {
+                id: existingProduct.id,
+                name: existingProduct.name
+            }
+        });
+        
+    } catch (error: any) {
+        console.error('❌ Error deleting product:', error);
+        
+        // จัดการ Prisma specific errors
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+        
+        if (error.code === 'P2003') {
+            return res.status(400).json({ error: 'Cannot delete product. It is being used by other records.' });
+        }
+        
         return res.status(500).json({ error: 'Failed to delete product.' });
     }
 };
 
-export { createProduct, getAllProducts, updateProduct, deleteProduct };
+export { createProduct, getProducts, getProductById, updateProduct, deleteProduct };
