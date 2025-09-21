@@ -12,58 +12,7 @@ import {
 
 const prisma = new PrismaClient();
 
-// ⭐ แก้ไข Interfaces สำหรับ Type Safety
-interface CreateProductRequest {
-    name: string;
-    price: number;
-    description?: string;
-}
 
-interface UpdateProductRequest {
-    name?: string;
-    price?: number;
-    description?: string;
-}
-
-interface ProductParams {
-    id?: string; // ⭐ เปลี่ยนเป็น optional
-}
-
-// ⭐ Helper function สำหรับ validation
-const validateProductData = (name: string, price: number) => {
-    const errors: string[] = [];
-    
-    if (!name || name.trim().length === 0) {
-        errors.push('Product name is required.');
-    }
-    
-    if (name && name.trim().length > 100) {
-        errors.push('Product name must be less than 100 characters.');
-    }
-    
-    if (price === undefined || price === null) {
-        errors.push('Price is required.');
-    }
-    
-    if (price <= 0) {
-        errors.push('Price must be greater than 0.');
-    }
-    
-    if (price > 999999.99) {
-        errors.push('Price is too high (max: 999,999.99).');
-    }
-    
-    return errors;
-};
-
-// ⭐ Helper function สำหรับ ID validation
-const validateProductId = (id: string): number | null => {
-    const productId = parseInt(id);
-    if (isNaN(productId) || productId <= 0) {
-        return null;
-    }
-    return productId;
-};
 
 // ฟังก์ชันสำหรับสร้างสินค้าใหม่
 const createProduct = async (req: Request, res: Response) => {
@@ -81,13 +30,14 @@ const createProduct = async (req: Request, res: Response) => {
             });
         }
         
-        const { name, price, description } = validationResult.data;
+        const { name, price,typeId, description } = validationResult.data;
         
         const newProduct = await prisma.product.create({
             data: {
                 name,
                 price,
-                ...(description && { description }), // ⭐ แก้ไขใหม่
+                ...(description && { description }),
+                ...(typeId && { typeId }), // ⭐ แก้ไขใหม่
             },
         });
         
@@ -170,7 +120,7 @@ const getProducts = async (req: Request, res: Response) => {
 };
 
 // ฟังก์ชันสำหรับดูสินค้าจาก ID
-const getProductById = async (req: Request<ProductParams>, res: Response) => {
+const getProductById = async (req: Request, res: Response) => {
     try {
         // ⭐ Validate Product ID
         const idValidation = productIdSchema.safeParse(req.params);
@@ -203,7 +153,7 @@ const getProductById = async (req: Request<ProductParams>, res: Response) => {
 };
 
 // ฟังก์ชันสำหรับอัปเดตข้อมูลสินค้า
-const updateProduct = async (req: Request<ProductParams, {}, UpdateProductRequest>, res: Response) => {
+const updateProduct = async (req: Request, res: Response) => {
     try {
         // ⭐ Validate Product ID
         const idValidation = productIdSchema.safeParse(req.params);
@@ -231,7 +181,7 @@ const updateProduct = async (req: Request<ProductParams, {}, UpdateProductReques
             });
         }
         
-        const { name, price, description } = validationResult.data;
+        const { name, price, description,typeId } = validationResult.data;
         
         // ตรวจสอบว่ามีข้อมูลที่จะอัปเดตหรือไม่
         if (!name && price === undefined && description === undefined) {
@@ -243,6 +193,7 @@ const updateProduct = async (req: Request<ProductParams, {}, UpdateProductReques
         if (name !== undefined) updateData.name = name;
         if (price !== undefined) updateData.price = price;
         if (description !== undefined) updateData.description = description;
+        if (typeId !== undefined) updateData.typeId = typeId; 
         
         const updatedProduct = await prisma.product.update({
             where: { id: productId },
@@ -269,7 +220,7 @@ const updateProduct = async (req: Request<ProductParams, {}, UpdateProductReques
 };
 
 // ฟังก์ชันสำหรับลบสินค้า
-const deleteProduct = async (req: Request<ProductParams>, res: Response) => {
+const deleteProduct = async (req: Request, res: Response) => {
     try {
         // ⭐ Validate Product ID
         const idValidation = productIdSchema.safeParse(req.params);

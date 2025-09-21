@@ -10,25 +10,38 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
 model User {
-  id    Int     @id @default(autoincrement())
-  user_name  String?
-  user_email String  @unique
+  id            Int      @id @default(autoincrement())
+  user_name     String?
+  user_email    String   @unique
   user_password String
-  user_role Int?
+  user_role     Int?
 
-  tb_role   tb_role? @relation(fields:[user_role], references:[id])
+  tb_role       tb_role? @relation(fields:[user_role], references:[id])
+}
 
-  
+model tb_role {
+  id        Int      @id @default(autoincrement())
+  role_name String   @db.VarChar(50)
+  User      User[]
 }
-model tb_role{
-  id Int    @id @default(autoincrement())
-  role_name String
-  User  User[]
+
+// ⭐ เพิ่ม model ใหม่สำหรับประเภทสินค้า
+model ProductType {
+  id          Int       @id @default(autoincrement())
+  type_name   String    @unique @db.VarChar(50)
+  products    Product[]
 }
- model Product {
-      id          Int      @id @default(autoincrement())
-      name        String
-      price       Float
-      description String?
-    }
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  price       Int
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  // ⭐ เพิ่ม field สำหรับเชื่อมโยงกับ ProductType
+  typeId      Int?
+  productType ProductType @relation(fields: [typeId], references: [id])
+}

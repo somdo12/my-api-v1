@@ -8,12 +8,20 @@ export const createProductSchema = z.object({
         .trim(),
     
     price: z.number()
+        .int({ message: "Price must be an integer" })
         .positive({ message: "Price must be greater than 0" })
-        .max(999999.99, { message: "Price is too high (max: 999,999.99)" }),
+        .max(100000000, { message: "Price is too high (max: 100,000,000)" }),
     
     description: z.string()
         .max(500, { message: "Description must be less than 500 characters" })
         .trim()
+        .optional()
+        .nullable(),
+    
+    // ⭐ เพิ่ม field ใหม่: typeId
+    typeId: z.number()
+        .int({ message: "Product type ID must be an integer" })
+        .positive({ message: "Product type ID must be greater than 0" })
         .optional()
         .nullable()
 });
@@ -27,13 +35,21 @@ export const updateProductSchema = z.object({
         .optional(),
         
     price: z.number()
-        .positive({ message: "Price must be greater than 0" })
-        .max(999999.99, { message: "Price is too high (max: 999,999.99)" })
+        .int({ message: "Price must be an integer" })
+        .positive({ message: "Price must be greater than 0" }) // ຕ້ອງຫຼາຍກວ່າ 0
+        .max(100000000, { message: "Price is too high (max: 100,000,000)" })
         .optional(),
         
     description: z.string()
         .max(500, { message: "Description must be less than 500 characters" })
         .trim()
+        .optional() // ໃສ່ບໍ່ໃສ່ກະໄດ້
+        .nullable(),// ອະນູຍາດໃຫ້ເປ໊ນຄ່າວ່າງ
+        
+    // ⭐ เพิ่ม field ใหม่: typeId
+    typeId: z.number()
+        .int({ message: "Product type ID must be an integer" })
+        .positive({ message: "Product type ID must be greater than 0" })
         .optional()
         .nullable()
 });
