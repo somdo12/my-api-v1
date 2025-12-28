@@ -6,7 +6,6 @@ import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
-// API: สร้างผู้ใช้ใหม่
 const createUser = async (req: Request, res: Response) => {
     const { user_name, user_email, user_password, user_role } = req.body;
     if (!user_email || !user_password) {
@@ -31,7 +30,6 @@ const createUser = async (req: Request, res: Response) => {
     }
 };
 
-// API: ดึงผู้ใช้ทั้งหมด
 const getAllUsers = async (req: Request, res: Response) => {
     try {
         const allUsers = await prisma.user.findMany();
