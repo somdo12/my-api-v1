@@ -4,16 +4,17 @@ import { requireRole } from '../middlewares/authz.middleware';
 import { generalLimiter, authLimiter, createUserLimiter, crudLimiter } from '../middlewares/rate-limit.middleware';
 import { createUser, getAllUsers, getUserById, updateUser, deleteUser, loginUser, changePassword } from '../controllers/user.controller';
 
-const router = Router();
-
-router.post('/sign-in', authLimiter, loginUser); 
-router.post('/sign-up', createUserLimiter, createUser); 
-router.get('/', generalLimiter, getAllUsers); 
-router.get('/:id', generalLimiter, getUserById); 
+export const userRouter = Router();
 
 
-router.put('/edit-password', crudLimiter, authenticateToken, changePassword); 
-router.put('/:id', generalLimiter, authenticateToken, requireRole(1), updateUser); 
-router.delete('/:id', generalLimiter, authenticateToken, requireRole(1), deleteUser); 
+userRouter.post('/sign-in', authLimiter, loginUser); 
+userRouter.post('/sign-up', createUserLimiter, createUser); 
+userRouter.get('/', generalLimiter, getAllUsers); 
+userRouter.get('/:id', generalLimiter, getUserById); 
 
-export default router;
+
+userRouter.put('/edit-password', crudLimiter, authenticateToken, changePassword); 
+userRouter.put('/:id', generalLimiter, authenticateToken, requireRole(1), updateUser); 
+userRouter.delete('/:id', generalLimiter, authenticateToken, requireRole(1), deleteUser); 
+
+// export default router;

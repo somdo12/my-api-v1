@@ -141,61 +141,47 @@ const getProductById = async (req: Request, res: Response) => {
 
 const updateProduct = async (req: Request, res: Response) => {
     try {
+        // 1. Validate ID
         const idValidation = productIdSchema.safeParse(req.params);
         if (!idValidation.success) {
-            return res.status(400).json({
-                error: 'Invalid product ID',
-                details: idValidation.error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message
-                }))
-            });
+            return res.status(400).json({ error: 'Invalid product ID', details: idValidation.error.format() });
         }
-        
         const productId = idValidation.data.id;
-        
+
+        // 2. Validate Body
         const validationResult = updateProductSchema.safeParse(req.body);
         if (!validationResult.success) {
-            return res.status(400).json({
-                error: 'Validation failed',
-                details: validationResult.error.issues.map(err => ({
-                    field: err.path.join('.'),
-                    message: err.message
-                }))
-            });
-        }
-        
-        const { name, price, description,typeId } = validationResult.data;
-        if (!name && price === undefined && description === undefined) {
-            return res.status(400).json({ error: 'At least one field (name, price, description) is required for update.' });
+            return res.status(400).json({ error: 'Validation failed', details: validationResult.error.format() });
         }
 
-        const updateData: any = {};
-        if (name !== undefined) updateData.name = name;
-        if (price !== undefined) updateData.price = price;
-        if (description !== undefined) updateData.description = description;
-        if (typeId !== undefined) updateData.typeId = typeId; 
-        
+        // 3. Check if body is empty
+        const updateData = validationResult.data;
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'At least one field is required for update.' });
+        }
+
+        // 4. Prepare update data
+        const prismaUpdateData = Object.fromEntries(
+            Object.entries(updateData).filter(([_, value]) => value !== undefined)
+        );
+
+        // 5. Database Update
         const updatedProduct = await prisma.product.update({
             where: { id: productId },
-            data: updateData,
+            data: prismaUpdateData,
         });
-        
+
         console.log(`✅ Product updated: ${updatedProduct.name} (ID: ${updatedProduct.id})`);
-        res.status(200).json(updatedProduct);
-        
+        return res.status(200).json(updatedProduct);
+
     } catch (error: any) {
         console.error('❌ Error updating product:', error);
-        
-        if (error.code === 'P2025') {
-            return res.status(404).json({ error: 'Product not found.' });
-        }
-        
-        if (error.code === 'P2002') {
-            return res.status(409).json({ error: 'Product name already exists.' });
-        }
-        
-        return res.status(500).json({ error: 'Failed to update product.' });
+
+        // Prisma specific errors
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Product not found.' });
+        if (error.code === 'P2002') return res.status(409).json({ error: 'Product name already exists.' });
+
+        return res.status(500).json({ error: 'Internal server error.' });
     }
 };
 

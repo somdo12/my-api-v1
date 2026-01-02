@@ -39,7 +39,6 @@ const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
-// API: ดึงผู้ใช้รายคน
 const getUserById = async (req: Request, res: Response) => {
     const userId = req.params.id;
     try {
@@ -57,7 +56,6 @@ const getUserById = async (req: Request, res: Response) => {
     }
 };
 
-// API: แก้ไขผู้ใช้
 const updateUser = async (req: Request, res: Response) => {
     const userId = req.params.id;
     const { user_name, user_email, user_role } = req.body;
@@ -81,7 +79,6 @@ const updateUser = async (req: Request, res: Response) => {
     }
 };
 
-// API: ลบผู้ใช้
 const deleteUser = async (req: Request, res: Response) => {
     const userId = req.params.id;
     try {
@@ -131,7 +128,6 @@ const changePassword = async (req: any, res: Response) => {
             return res.status(404).json({ error: 'User not found.' });
         }
 
-        // เพิ่ม console.log นี้เพื่อตรวจสอบค่าในฐานข้อมูล
         console.log('Password in database:', user.user_password);
         console.log('Old password from Postman:', old_password);
 

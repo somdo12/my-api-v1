@@ -8,7 +8,8 @@ const router = Router();
 
 router.get('/', generalLimiter, getProducts);
 router.get('/:id', generalLimiter, getProductById);
-router.post('/', authenticateToken, requireRole(1), createProductLimiter, createProduct);
+// router.post('/', authenticateToken, requireRole(1), createProductLimiter, createProduct);
+router.post('/', createProductLimiter, createProduct);
 router.delete('/:id', authenticateToken, requireRole(1), crudLimiter, deleteProduct);
 router.put('/:id', authenticateToken, crudLimiter, updateProduct);
 
