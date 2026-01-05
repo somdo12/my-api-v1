@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 
 const authenticateSelf = (req: any, res: Response, next: NextFunction) => {
     if (!req.user || !req.user.userId) {

@@ -27,7 +27,6 @@ model tb_role {
   User      User[]
 }
 
-// ⭐ เพิ่ม model ใหม่สำหรับประเภทสินค้า
 model ProductType {
   id          Int       @id @default(autoincrement())
   type_name   String    @unique @db.VarChar(50)
@@ -41,7 +40,6 @@ model Product {
   description String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  // ⭐ เพิ่ม field สำหรับเชื่อมโยงกับ ProductType
   typeId      Int?
   productType ProductType? @relation(fields: [typeId], references: [id])
 }
